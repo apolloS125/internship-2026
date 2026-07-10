@@ -12,6 +12,7 @@ def save_text(title, text):
     with KNOWLEDGE_FILE.open("a", encoding="utf-8") as file:
         file.write(f"\n\n{title}\n{text.strip()}\n")
 
+# i dont sure if this is the best way to chunk text, but it works for now
 def add_pdf(filename, content, page_start=None, page_end=None):
     reader = PdfReader(BytesIO(content))
     total_pages = len(reader.pages)
@@ -30,7 +31,7 @@ def add_pdf(filename, content, page_start=None, page_end=None):
     save_text(filename, text)
     return {"filename": filename, "chunks": len(chunk_text(text))}
 
-def chunk_text(text, size=1200):
+def chunk_text(text, size=1200): #size=1200 may be is a good size for LLM context
     text = re.sub(r"\s+", " ", text).strip()
     if not text:
         return []
