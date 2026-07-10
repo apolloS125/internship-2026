@@ -1,9 +1,8 @@
-from fastapi import FastAPI,UploadFile,File,HTTPException
+from fastapi import FastAPI,UploadFile,File,HTTPException,Request
 from app.config import Settings
 from app.schemas import ChatRequest, ChatResponse, DocumentInfo, UploadResponse 
 from app import rag
-
-from dotenv import load_dotenv
+from app.line import parse_line_events
 
 app = FastAPI(title="Internship-2026")
 settings = Settings()
@@ -36,4 +35,10 @@ async def upload_documents(files: list[UploadFile] = File(...)) -> UploadRespons
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest) -> ChatResponse:
+    pass
+
+# https://github.com/line/line-bot-sdk-python so helpful, but I need to read the documentation more carefully
+@app.post("/line/webhook")
+async def line_webhook(request: Request) -> dict:
+    events = await parse_line_events(request, settings)
     pass
