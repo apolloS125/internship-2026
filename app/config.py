@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-@dataclass
+
 @dataclass(frozen=True)
 class Settings:
     llm_api_key: str | None = os.getenv("API_KEY")

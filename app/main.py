@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Request, UploadFile
 from app import rag
 from app.config import Settings
 from app.schemas import ChatRequest, ChatResponse, DocumentInfo, UploadResponse
-from app.line import parse_line_events
+from app.line import parse_line_events, reply_to_line
 from app.llm import generate_answer
 
 app = FastAPI(title="Internship-2026")
@@ -55,4 +55,21 @@ async def chat(request: ChatRequest):
 @app.post("/line/webhook")
 async def line_webhook(request: Request) -> dict:
     events = await parse_line_events(request, settings)
-    pass
+    for event in events:
+        message = event.message.text.strip()
+
+        if not message or not event.reply_token:
+            continue
+
+        relevant_chunks = rag.search(message, limit=5)
+
+        try:
+            answer = await generate_answer(message, relevant_chunks, settings)
+        except (ValueError, RuntimeError):
+            answer = "please try again later. The LLM service is currently unavailable."
+
+        try:
+            await reply_to_line(event.reply_token, answer, settings)
+        except RuntimeError as error:
+            raise HTTPException(status_code=502, detail=str(error)) from error
+    return {"status": "ok",}
