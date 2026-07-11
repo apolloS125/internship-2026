@@ -1,8 +1,5 @@
 import httpx
-import numpy as np
-import numpy as np
-import requests
-from pathlib import Path
+
 from app.config import Settings
 
 SYSTEM_PROMPT = """
@@ -17,6 +14,7 @@ You are a helpful RAG chatbot for the Royal Irrigation Department annual report.
 </instructions>
 </system_prompt>
 """
+
 def make_context(chunks: list[dict]) -> str:
     context = ""
     for chunk in chunks:
@@ -24,19 +22,25 @@ def make_context(chunks: list[dict]) -> str:
     return context.strip()
 
 async def generate_answer(message: str, chunks: list[dict], settings: Settings) -> str:
-    
     if not settings.llm_api_key:
         raise ValueError("LLM API key is not set in the environment variables.")
     payload = {
         "model": settings.model,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"Context:\n{make_context(chunks)}\nQuestion:\n{message}"},
+            {
+                "role": "user",
+                "content": (
+                    f"Context:\n{make_context(chunks)}\nQuestion:\n{message}"
+                ),
+            },
         ],
-        "temperature": 0.2, #try 0.1 later
+        "temperature": 0.2,
         "stream": False,
     }
-    try: #https://www.python-httpx.org/async/ documentation
+
+    # Reference: https://www.python-httpx.org/async/
+    try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{settings.base_url}/chat/completions",
@@ -47,5 +51,7 @@ async def generate_answer(message: str, chunks: list[dict], settings: Settings) 
             response.raise_for_status()
             data = response.json()
             return data["choices"][0]["message"]["content"]
-    except httpx.RequestError as e:
-        raise RuntimeError(f"An error occurred while requesting the LLM API: {e}")
+    except httpx.HTTPError as error:
+        raise RuntimeError(
+            f"An error occurred while requesting the LLM API: {error}"
+        ) from error

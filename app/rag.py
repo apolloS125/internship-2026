@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from langchain_community.document_loaders import PyPDFLoader
@@ -6,8 +7,12 @@ from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+# Reference: https://docs.langchain.com/oss/python/langchain/knowledge-base
+# Chunk-size example: https://www.youtube.com/watch?v=1bbDH3kyf9I&t=282s
+
 KNOWLEDGE_FILE = Path("knowledge.txt")
-MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+MODEL_NAME = ("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+THAI_MARKS = re.compile(r"[\u0e31\u0e34-\u0e3a\u0e47-\u0e4e]")
 
 text_splitter = RecursiveCharacterTextSplitter(
     chunk_size=1200,
@@ -104,13 +109,51 @@ def parse_upload(filename, content):
 
     raise ValueError("Support only .pdf and .txt files")
 
+def clean_for_search(text):
+    text = text.lower().replace("�", "")
+    text = re.sub(r"\s+", "", text)
+    return THAI_MARKS.sub("", text)
+
+def keyword_search(query, limit):
+    #Find chunks when broken Thai PDF text hurts semantic search.
+    query = clean_for_search(query)
+    query_parts = set(
+        query[index : index + 4]
+        for index in range(max(0, len(query) - 3))
+    )
+    scores = []
+
+    for document in chunks:
+        text = clean_for_search(document.page_content)
+        score = 0
+
+        for part in query_parts:
+            if part in text:
+                score += 1
+
+        if score > 0:
+            scores.append((score, document))
+
+    scores.sort(key=lambda item: item[0], reverse=True)
+    return [document for score, document in scores[:limit]]
+
 def search(query, limit=5):
     if not query.strip() or limit < 1 or vector_store is None:
         return []
     retriever = vector_store.as_retriever(
         search_kwargs={"k": min(limit, len(chunks))}
     )
-    documents = retriever.invoke(query)
+    semantic_documents = retriever.invoke(query)
+    keyword_documents = keyword_search(query, limit)
+    documents = []
+
+    for document in keyword_documents + semantic_documents:
+        if document not in documents:
+            documents.append(document)
+
+        if len(documents) == limit:
+            break
+
     results = []
 
     for document in documents:
