@@ -2,6 +2,8 @@ import httpx
 
 from app.config import Settings
 
+# Message format reference:
+# https://docs.langchain.com/oss/python/langchain/messages
 SYSTEM_PROMPT = """
 <system_prompt>
 <role>
@@ -22,20 +24,29 @@ def make_context(chunks: list[dict]) -> str:
         context += f"Page {chunk['page_number']}:\n{chunk['text']}\n\n"
     return context.strip()
 
-async def generate_answer(message: str, chunks: list[dict], settings: Settings) -> str:
+async def generate_answer(
+    message: str,
+    chunks: list[dict],
+    settings: Settings,
+    history: list[dict] | None = None,
+) -> str:
     if not settings.llm_api_key:
         raise ValueError("LLM API key is not set in the environment variables.")
+
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    messages.extend(history or [])
+    messages.append(
+        {
+            "role": "user",
+            "content": (
+                f"Context:\n{make_context(chunks)}\nQuestion:\n{message}"
+            ),
+        }
+    )
+
     payload = {
         "model": settings.model,
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": (
-                    f"Context:\n{make_context(chunks)}\nQuestion:\n{message}"
-                ),
-            },
-        ],
+        "messages": messages,
         "temperature": 0.2,
         "stream": False,
     }

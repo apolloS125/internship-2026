@@ -1,8 +1,9 @@
 from fastapi import FastAPI, HTTPException, Request, UploadFile
 from app import rag
 from app.config import Settings
+from app.conversation import add_turn, get_history, make_search_query
 from app.schemas import ChatRequest, ChatResponse, DocumentInfo, UploadResponse
-from app.line import parse_line_events, reply_to_line
+from app.line import get_line_conversation_id, parse_line_events, reply_to_line
 from app.llm import generate_answer
 
 app = FastAPI(title="Internship-2026")
@@ -37,18 +38,30 @@ async def upload_document(file: UploadFile):
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     message = request.message.strip()
+    conversation_id = request.conversation_id.strip()
+
     if not message:
         return ChatResponse(message="Please provide a message to chat.")
+    if not conversation_id:
+        raise HTTPException(status_code=400, detail="Conversation ID cannot be empty")
 
-    relevant_chunks = rag.search(message, limit=5)
+    history = get_history(conversation_id)
+    search_query = make_search_query(message, history)
+    relevant_chunks = rag.search(search_query, limit=5)
 
     try:
-        answer = await generate_answer(message, relevant_chunks, settings)
+        answer = await generate_answer(
+            message,
+            relevant_chunks,
+            settings,
+            history=history,
+        )
     except ValueError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
     except RuntimeError as error:
         raise HTTPException(status_code=502, detail=str(error)) from error
 
+    add_turn(conversation_id, message, answer)
     return ChatResponse(message=answer)
 
 # Reference: https://github.com/line/line-bot-sdk-python
@@ -61,15 +74,28 @@ async def line_webhook(request: Request) -> dict:
         if not message or not event.reply_token:
             continue
 
-        relevant_chunks = rag.search(message, limit=5)
+        conversation_id = get_line_conversation_id(event)
+        history = get_history(conversation_id)
+        search_query = make_search_query(message, history)
+        relevant_chunks = rag.search(search_query, limit=5)
+        save_history = True
 
         try:
-            answer = await generate_answer(message, relevant_chunks, settings)
+            answer = await generate_answer(
+                message,
+                relevant_chunks,
+                settings,
+                history=history,
+            )
         except (ValueError, RuntimeError):
             answer = "please try again later. The LLM service is currently unavailable."
+            save_history = False
 
         try:
             await reply_to_line(event.reply_token, answer, settings)
         except RuntimeError as error:
             raise HTTPException(status_code=502, detail=str(error)) from error
+
+        if save_history:
+            add_turn(conversation_id, message, answer)
     return {"status": "ok",}

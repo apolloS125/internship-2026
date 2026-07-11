@@ -9,6 +9,7 @@ from app.config import Settings
 # References:
 # https://developers.line.biz/en/docs/messaging-api/verify-webhook-signature/
 # https://developers.line.biz/en/reference/messaging-api/#send-reply-message
+# https://developers.line.biz/en/reference/messaging-api/#source-user
 async def parse_line_events(request: Request, settings: Settings):
     if not settings.line_channel_secret:
         raise HTTPException(status_code=503, detail="LINE channel secret is not set")
@@ -29,6 +30,15 @@ async def parse_line_events(request: Request, settings: Settings):
         and isinstance(event.message, TextMessageContent)
     ]
 
+def get_line_conversation_id(event):
+    source = event.source
+
+    return (
+        getattr(source, "group_id", None)
+        or getattr(source, "room_id", None)
+        or getattr(source, "user_id", None)
+        or event.webhook_event_id
+    )
 
 async def reply_to_line(reply_token: str, text: str, settings: Settings) -> None:
     if not settings.line_channel_access_token:

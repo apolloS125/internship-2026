@@ -53,7 +53,7 @@ document context, calls the LLM, and replies using the event's one-time
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/documents` | Upload one `.pdf` or `.txt` file using form field `file` |
-| `POST` | `/chat` | Ask a question and receive a RAG answer |
+| `POST` | `/chat` | Ask a question with optional conversation context |
 | `POST` | `/line/webhook` | Receive LINE webhook events and reply to text messages |
 
 ## Examples
@@ -69,7 +69,15 @@ Ask a question:
 ```bash
 curl -X POST http://127.0.0.1:8000/chat \
   -H "Content-Type: application/json" \
-  -d '{"message":"ห้วยกรอกเคียน สนับสนุนพื้นที่เศรษฐกิจใด"}'
+  -d '{"conversation_id":"demo-user","message":"ห้วยกรอกเคียน สนับสนุนพื้นที่เศรษฐกิจใด"}'
+```
+
+Ask a follow-up using the same `conversation_id`:
+
+```bash
+curl -X POST http://127.0.0.1:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"conversation_id":"demo-user","message":"แล้วมีความจุเท่าไร"}'
 ```
 
 ## Code References
@@ -86,9 +94,11 @@ documentation and examples were used as references:
 | Text splitting | [LangChain: Recursive text splitter](https://docs.langchain.com/oss/python/integrations/splitters/recursive_text_splitter) | `RecursiveCharacterTextSplitter` in `app/rag.py` |
 | Embeddings | [LangChain: Embedding integrations](https://docs.langchain.com/oss/python/integrations/embeddings/) | `HuggingFaceEmbeddings` in `app/rag.py` |
 | Vector search | [LangChain: Vector stores](https://docs.langchain.com/oss/python/integrations/vectorstores/) | FAISS indexing and semantic retrieval in `app/rag.py` |
+| Chat message roles | [LangChain: Messages](https://docs.langchain.com/oss/python/langchain/messages) | `system`, `user`, and `assistant` message history passed to the LLM in `app/llm.py` |
 | Chunk sizing | [How to Set the Chunk Size in Document Splitter](https://www.youtube.com/watch?v=1bbDH3kyf9I&t=282s) | Initial chunk-size learning reference |
 | Async HTTP | [HTTPX: Async Support](https://www.python-httpx.org/async/) | `AsyncClient` in `app/llm.py` |
 | LINE SDK | [LINE Bot SDK for Python](https://github.com/line/line-bot-sdk-python) | Webhook parsing and message replies in `app/line.py` |
 | LINE webhook security | [LINE: Verify webhook signature](https://developers.line.biz/en/docs/messaging-api/verify-webhook-signature/) | `x-line-signature` validation in `app/line.py` |
+| LINE conversation scope | [LINE: Webhook source objects](https://developers.line.biz/en/reference/messaging-api/#source-user) | `userId`, `groupId`, and `roomId` used to separate LINE conversation history |
 
 and orther from private repo from my old project with my partner
