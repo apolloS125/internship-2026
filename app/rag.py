@@ -138,7 +138,7 @@ def keyword_search(query, limit):
     return [document for score, document in scores[:limit]]
 
 def search(query, limit=5):
-    if not query.strip() or limit < 1 or vector_store is None:
+    if not query or not query.strip() or limit < 1 or vector_store is None:
         return []
     retriever = vector_store.as_retriever(
         search_kwargs={"k": min(limit, len(chunks))}

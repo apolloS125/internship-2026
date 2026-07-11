@@ -17,7 +17,10 @@ def add_turn(conversation_id, user_message, assistant_message):
 
 def make_search_query(message, history):
     for item in reversed(history):
-        return f"{item['content']}\n{message}" if item["role"] == "assistant" else message
+        if item["role"] == "user":
+            return f"{item['content']}\n{message}"
+
+    return message
 
 def clear_history(conversation_id):
     conversations.pop(conversation_id, None)
