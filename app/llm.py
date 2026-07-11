@@ -3,13 +3,7 @@ import numpy as np
 import numpy as np
 import requests
 from pathlib import Path
-from sentence_transformers import SentenceTransformer
 from app.config import Settings
-
-try:
-    import faiss
-except Exception:
-    faiss = None
 
 SYSTEM_PROMPT = """
 <system_prompt>
@@ -42,7 +36,7 @@ async def generate_answer(message: str, chunks: list[dict], settings: Settings) 
         "temperature": 0.2, #try 0.1 later
         "stream": False,
     }
-    try:
+    try: #https://www.python-httpx.org/async/ documentation
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{settings.base_url}/chat/completions",

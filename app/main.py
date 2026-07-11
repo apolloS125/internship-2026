@@ -18,6 +18,8 @@ def load_default_pdf() -> None:
         page_start=settings.page_start,
         page_end=settings.page_end,
     )
+rag.load_knowledge()
+load_default_pdf()
 
 @app.post("/documents", response_model=UploadResponse)
 async def upload_documents(files: list[UploadFile] = File(...)) -> UploadResponse:
