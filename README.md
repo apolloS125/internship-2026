@@ -1,85 +1,94 @@
-# Technical Test for Internship Program — LINE RAG Chatbot
-> Please follow the instructions below to complete the test.
----
-### **Task Overview**  
-Develop a **Generative AI Chatbot** that integrates with **LINE** and utilizes **LLM API** for response generation. Implement **Retrieval-Augmented Generation (RAG)** to enhance responses based on uploaded text documents.
+## Personal Info
 
-<p align="left">
-  <img src="diagram.png" width="640"/>
-</p>
+Jetesada Kaewmanee 2026
 
+## Video Link
 
-## Instructions
+https://youtu.be/X3q1nJKHWZw
 
-### 1. Backend
-- Develop the chatbot backend using **FastAPI** with **Python version 3.12**
+## Installation and Environment Setup
 
-### 2. Document Upload & Storage
-- Provide an API endpoint to **upload documents** 
-- Supported file types: **`.pdf` and `.txt`**
-- Store uploaded files in **memory or temporary storage** — `no database required`
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+cp .env.example .env
+```
 
-### 3. Retrieval-Augmented Generation (RAG)
-- Use data from `src/REPORT2568.pdf` **Reference** `กรมชลประทาน รายงานประจำปี 2568 หน้าที่ 30-50`
-- Implement a RAG pipeline:
-  - When a user sends a message, retrieve relevant text chunks from uploaded documents
-- Use **in-memory search** or **vector database**, whichever you prefer.
+Fill in `.env`:
 
-### 4. Language Model
-- Use any LLM API of your choice.
-- The model must generate responses in Thai or English depending on what the user writes.
+```bash
+API_KEY=your_api_key
+OPENROUTER_MODEL=qwen/qwen3.6-27b
+OPENROUTER_BASE_URL=https://ai.psu.blue/v1
+LINE_CHANNEL_SECRET=your_line_channel_secret
+LINE_CHANNEL_ACCESS_TOKEN=your_line_channel_access_token
+```
 
-### 5. LINE OA Integration
-- Connect the chatbot to **LINE Messaging API**
-- Handle incoming messages via Webhook and reply in real time
-- You need to find the way to connect your Backend with Line OA **Trust me it's not hard 🙂**
+## Execution
 
-### 6. Code & Repository
-1. **GitHub Repository**: Push the completed project to a **public GitHub repository**. (Do not include the `.env` file.)
-2. **Video Demonstration**: Record a video testing your chatbot on the Line platform using the questions from `src/QnA-Sheet.csv`. Upload the video to an online platform (e.g., YouTube, Google Drive).
-3. **Documentation**: Include a comprehensive **`README.md`** file covering the following:
-   - **Personal Info**: The first paragraph must contain your **FULL NAME** and **INTERNSHIP YEAR** (e.g., **JOHN DOE 2026**).
-   - **Video Link**: Direct link to the uploaded demonstration video.
-   - **Installation**: Step-by-step instructions on how to install dependencies.
-   - **Environment Setup**: Instructions on how to configure environment variables.
-   - **Execution**: How to run the project locally.
-   - **API Reference**: A complete list of all API endpoints.
----
+```bash
+uvicorn app.main:app --reload
+```
 
-## Extra Score
+- API docs: `http://127.0.0.1:8000/docs`
+- Health: `http://127.0.0.1:8000/health`
+- LINE webhook URL: `https://your-tunnel-domain/line/webhook`
 
-Complete any of the following to earn additional points. Each item is independent.
+## LINE Setup
 
-### Extra 1 — Vector Database
-- Replace in-memory keyword search with a vector database
-- Use embedding models to encode documents and retrieve by semantic similarity
+1. Set `LINE_CHANNEL_SECRET` and `LINE_CHANNEL_ACCESS_TOKEN` in `.env`.
+2. Expose this application through a public HTTPS URL.
+3. Set the Messaging API webhook URL to
+   `https://your-domain/line/webhook` in LINE Developers Console.
+4. Enable **Use webhook**, then click **Verify**.
+5. Add the LINE Official Account as a friend and send a text message.
 
-### Extra 2 — Additional File Types for Uploading and Retrieval
-- Support uploading **CSV or Excel files**
-- Support uploading **images** 
+The webhook verifies `x-line-signature`, accepts text message events, retrieves
+document context, calls the LLM, and replies using the event's one-time
+`reply_token`.
 
-### Extra 3 — Chat History
-- Track conversation history per user
-- Pass previous messages as context to the LLM so the bot can understand follow-up questions
+## API
 
----
-
-## Evaluation Criteria
-| Criteria | Score | Description |
+| Method | Path | Description |
 |---|---|---|
-| RAG Pipeline | 40 pts | Retrieval is relevant and context is properly injected into the prompt |
-| Code Quality | 30 pts | Well-structured, readable, documented code and clear README |
-| Correct Response | 20 pts | Bot answers accurately using content from uploaded documents |
-| LINE Integration | 10 pts | Webhook works end-to-end; messages received and replied correctly |
+| `POST` | `/documents` | Upload one `.pdf` or `.txt` file using form field `file` |
+| `POST` | `/chat` | Ask a question and receive a RAG answer |
+| `POST` | `/line/webhook` | Receive LINE webhook events and reply to text messages |
 
-## Extra Evalutation Critieria
-| Criteria | Score | Description |
+## Examples
+
+Upload a document:
+
+```bash
+curl -F "file=@src/REPORT2568.pdf" http://127.0.0.1:8000/documents
+```
+
+Ask a question:
+
+```bash
+curl -X POST http://127.0.0.1:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message":"ห้วยกรอกเคียน สนับสนุนพื้นที่เศรษฐกิจใด"}'
+```
+
+## Code References
+
+The implementation was written for this project. The following official
+documentation and examples were used as references:
+
+| Area | Reference | Used in |
 |---|---|---|
-| Vector DB | + 10 pts | Semantic retrieval implemented with a vector database |
-| More File Types | + 10 pts | CSV, Excel, or image files parsed and indexed for RAG |
-| Chat History | + 10 pts | Conversation context passed to LLM; bot handles follow-ups correctly |
+| Python style | [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html) | Imports, naming, spacing, comments, and docstrings |
+| FastAPI file uploads | [FastAPI: Request Files](https://fastapi.tiangolo.com/tutorial/request-files/) | Single `UploadFile` handling in `app/main.py` |
+| RAG workflow | [LangChain: Build a semantic search engine](https://docs.langchain.com/oss/python/langchain/knowledge-base) and (https://github.com/GiovanniPasq/agentic-rag-for-dummies/blob/main/notebooks/agentic_rag.ipynb) | Document loading, splitting, embedding, and retrieval in `app/rag.py` |
+| PDF loading | [LangChain: Document loaders](https://docs.langchain.com/oss/python/integrations/document_loaders/) | `PyPDFLoader` in `app/rag.py` |
+| Text splitting | [LangChain: Recursive text splitter](https://docs.langchain.com/oss/python/integrations/splitters/recursive_text_splitter) | `RecursiveCharacterTextSplitter` in `app/rag.py` |
+| Embeddings | [LangChain: Embedding integrations](https://docs.langchain.com/oss/python/integrations/embeddings/) | `HuggingFaceEmbeddings` in `app/rag.py` |
+| Vector search | [LangChain: Vector stores](https://docs.langchain.com/oss/python/integrations/vectorstores/) | FAISS indexing and semantic retrieval in `app/rag.py` |
+| Chunk sizing | [How to Set the Chunk Size in Document Splitter](https://www.youtube.com/watch?v=1bbDH3kyf9I&t=282s) | Initial chunk-size learning reference |
+| Async HTTP | [HTTPX: Async Support](https://www.python-httpx.org/async/) | `AsyncClient` in `app/llm.py` |
+| LINE SDK | [LINE Bot SDK for Python](https://github.com/line/line-bot-sdk-python) | Webhook parsing and message replies in `app/line.py` |
+| LINE webhook security | [LINE: Verify webhook signature](https://developers.line.biz/en/docs/messaging-api/verify-webhook-signature/) | `x-line-signature` validation in `app/line.py` |
 
----
-No things are perfect we just want to know you. `Good Luck !!`
-
-`Authors by JATURAWICH and NIPITPON`
+and orther from private repo from my old project with my partner
